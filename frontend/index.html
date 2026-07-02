@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Job/Internship Portal</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<nav>
+    <div class="brand">JobPortal</div>
+    <div id="navLinks">
+        <a href="login.html">Login</a>
+        <a href="register.html">Register</a>
+    </div>
+</nav>
+
+<div class="container">
+    <div class="card">
+        <h1>Find Your Next Job or Internship</h1>
+        <form id="searchForm" style="flex-direction: row; flex-wrap: wrap; max-width: none;">
+            <input type="text" id="search" placeholder="Search title or skills" style="flex:2; min-width:200px;">
+            <select id="type" style="flex:1; min-width:120px;">
+                <option value="">All Types</option>
+                <option value="job">Job</option>
+                <option value="internship">Internship</option>
+            </select>
+            <input type="text" id="location" placeholder="Location" style="flex:1; min-width:150px;">
+            <button type="submit" style="flex:0;">Search</button>
+        </form>
+    </div>
+
+    <div class="card">
+        <h2>Open Listings</h2>
+        <div id="jobList">Loading...</div>
+    </div>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+    const user = getUser();
+    if (user) {
+        document.getElementById('navLinks').innerHTML = `
+            <a href="${user.role === 'employer' ? 'employer-dashboard.html' : 'candidate-dashboard.html'}">Dashboard</a>
+            <a href="#" onclick="logout()">Logout</a>`;
+    }
+
+    async function loadJobs(params = '') {
+        const listEl = document.getElementById('jobList');
+        listEl.textContent = 'Loading...';
+        try {
+            const jobs = await apiRequest(`/jobs${params}`);
+            if (jobs.length === 0) {
+                listEl.innerHTML = '<p>No jobs found.</p>';
+                return;
+            }
+            listEl.innerHTML = jobs.map(job => `
+                <div class="job-item">
+                    <h3>${job.title}</h3>
+                    <span class="tag">${job.type}</span>
+                    <span class="tag">${job.location || 'Remote'}</span>
+                    <p>${job.company_name || job.employer_name}</p>
+                    <p>${job.description.slice(0, 140)}...</p>
+                    <p><strong>${job.stipend_salary || ''}</strong></p>
+                    <a href="job-details.html?id=${job.id}">View & Apply →</a>
+                </div>
+            `).join('');
+        } catch (err) {
+            listEl.innerHTML = `<p class="error">${err.message}</p>`;
+        }
+    }
+
+    document.getElementById('searchForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const search = document.getElementById('search').value;
+        const type = document.getElementById('type').value;
+        const location = document.getElementById('location').value;
+        const qs = new URLSearchParams({ search, type, location }).toString();
+        loadJobs(`?${qs}`);
+    });
+
+    loadJobs();
+</script>
+</body>
+</html>

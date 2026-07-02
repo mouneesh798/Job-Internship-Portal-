@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Employer Dashboard - Job Portal</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<nav>
+    <div class="brand">JobPortal</div>
+    <div><a href="index.html">Browse</a><a href="#" onclick="logout()">Logout</a></div>
+</nav>
+
+<div class="container">
+    <div class="card"><h1 id="welcomeMsg">Employer Dashboard</h1></div>
+
+    <div class="card">
+        <h2>Post a New Job / Internship</h2>
+        <form id="jobForm">
+            <input type="text" id="title" placeholder="Job Title" required>
+            <select id="type">
+                <option value="job">Job</option>
+                <option value="internship">Internship</option>
+            </select>
+            <input type="text" id="location" placeholder="Location">
+            <input type="text" id="stipend_salary" placeholder="Salary / Stipend">
+            <input type="text" id="skills_required" placeholder="Skills required (comma separated)">
+            <textarea id="description" placeholder="Job description" required></textarea>
+            <button type="submit">Post Job</button>
+            <p id="jobMessage"></p>
+        </form>
+    </div>
+
+    <div class="card">
+        <h2>My Job Postings</h2>
+        <div id="myJobsList">Loading...</div>
+    </div>
+
+    <div class="card" id="applicantsSection" style="display:none;">
+        <h2 id="applicantsTitle">Applicants</h2>
+        <table>
+            <thead><tr><th>Name</th><th>Email</th><th>Resume</th><th>Status</th><th>Update</th></tr></thead>
+            <tbody id="applicantsBody"></tbody>
+        </table>
+    </div>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+    const user = requireAuth('employer');
+    if (user) document.getElementById('welcomeMsg').textContent = `Welcome, ${user.company_name || user.name}`;
+
+    document.getElementById('jobForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const messageEl = document.getElementById('jobMessage');
+        try {
+            await apiRequest('/jobs', 'POST', {
+                title: document.getElementById('title').value,
+                type: document.getElementById('type').value,
+                location: document.getElementById('location').value,
+                stipend_salary: document.getElementById('stipend_salary').value,
+                skills_required: document.getElementById('skills_required').value,
+                description: document.getElementById('description').value
+            }, true);
+            messageEl.textContent = 'Job posted successfully!';
+            messageEl.className = 'success';
+            document.getElementById('jobForm').reset();
+            loadMyJobs();
+        } catch (err) {
+            messageEl.textContent = err.message;
+            messageEl.className = 'error';
+        }
+    });
+
+    async function loadMyJobs() {
+        const listEl = document.getElementById('myJobsList');
+        try {
+            const jobs = await apiRequest('/jobs/employer/mine', 'GET', null, true);
+            if (jobs.length === 0) {
+                listEl.innerHTML = '<p>No jobs posted yet.</p>';
+                return;
+            }
+            listEl.innerHTML = jobs.map(job => `
+                <div class="job-item">
+                    <h3>${job.title}</h3>
+                    <span class="tag">${job.type}</span>
+                    <span class="tag">${job.status}</span>
+                    <p>${job.location || 'Remote'} • ${job.stipend_salary || ''}</p>
+                    <button onclick="viewApplicants(${job.id}, '${job.title.replace(/'/g, "\\'")}')">View Applicants</button>
+                    <button class="danger" onclick="deleteJob(${job.id})">Delete</button>
+                </div>
+            `).join('');
+        } catch (err) {
+            listEl.innerHTML = `<p class="error">${err.message}</p>`;
+        }
+    }
+
+    async function deleteJob(id) {
+        if (!confirm('Delete this job posting?')) return;
+        try {
+            await apiRequest(`/jobs/${id}`, 'DELETE', null, true);
+            loadMyJobs();
+        } catch (err) {
+            alert(err.message);
+        }
+    }
+
+    async function viewApplicants(jobId, title) {
+        const section = document.getElementById('applicantsSection');
+        const body = document.getElementById('applicantsBody');
+        document.getElementById('applicantsTitle').textContent = `Applicants for: ${title}`;
+        section.style.display = 'block';
+        body.innerHTML = '<tr><td colspan="5">Loading...</td></tr>';
+
+        try {
+            const applicants = await apiRequest(`/applications/job/${jobId}`, 'GET', null, true);
+            if (applicants.length === 0) {
+                body.innerHTML = '<tr><td colspan="5">No applicants yet.</td></tr>';
+                return;
+            }
+            body.innerHTML = applicants.map(a => `
+                <tr>
+                    <td>${a.name}</td>
+                    <td>${a.email}</td>
+                    <td><a href="http://localhost:5000${a.resume_path}" target="_blank">View</a></td>
+                    <td class="status-${a.status}">${a.status}</td>
+                    <td>
+                        <select onchange="updateStatus(${a.application_id}, this.value)">
+                            <option ${a.status === 'Applied' ? 'selected' : ''}>Applied</option>
+                            <option ${a.status === 'Shortlisted' ? 'selected' : ''}>Shortlisted</option>
+                            <option ${a.status === 'Selected' ? 'selected' : ''}>Selected</option>
+                            <option ${a.status === 'Rejected' ? 'selected' : ''}>Rejected</option>
+                        </select>
+                    </td>
+                </tr>
+            `).join('');
+        } catch (err) {
+            body.innerHTML = `<tr><td colspan="5" class="error">${err.message}</td></tr>`;
+        }
+    }
+
+    async function updateStatus(applicationId, status) {
+        try {
+            await apiRequest(`/applications/${applicationId}/status`, 'PUT', { status }, true);
+        } catch (err) {
+            alert(err.message);
+        }
+    }
+
+    if (user) loadMyJobs();
+</script>
+</body>
+</html>

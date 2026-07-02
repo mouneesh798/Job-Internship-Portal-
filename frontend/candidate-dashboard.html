@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Candidate Dashboard - Job Portal</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<nav>
+    <div class="brand">JobPortal</div>
+    <div>
+        <a href="index.html">Browse Jobs</a>
+        <a href="#" onclick="logout()">Logout</a>
+    </div>
+</nav>
+
+<div class="container">
+    <div class="card">
+        <h1 id="welcomeMsg">My Applications</h1>
+    </div>
+
+    <div class="card">
+        <table>
+            <thead>
+                <tr>
+                    <th>Job Title</th><th>Company</th><th>Type</th>
+                    <th>Applied On</th><th>Status</th><th>Resume</th>
+                </tr>
+            </thead>
+            <tbody id="appTableBody"><tr><td colspan="6">Loading...</td></tr></tbody>
+        </table>
+    </div>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+    const user = requireAuth('candidate');
+    if (user) document.getElementById('welcomeMsg').textContent = `Welcome, ${user.name}`;
+
+    async function loadApplications() {
+        const tbody = document.getElementById('appTableBody');
+        try {
+            const apps = await apiRequest('/applications/my', 'GET', null, true);
+            if (apps.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6">You have not applied to any jobs yet.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = apps.map(a => `
+                <tr>
+                    <td>${a.title}</td>
+                    <td>${a.company_name}</td>
+                    <td>${a.type}</td>
+                    <td>${new Date(a.applied_at).toLocaleDateString()}</td>
+                    <td class="status-${a.status}">${a.status}</td>
+                    <td><a href="http://localhost:5000${a.resume_path}" target="_blank">View</a></td>
+                </tr>
+            `).join('');
+        } catch (err) {
+            tbody.innerHTML = `<tr><td colspan="6" class="error">${err.message}</td></tr>`;
+        }
+    }
+
+    if (user) loadApplications();
+</script>
+</body>
+</html>

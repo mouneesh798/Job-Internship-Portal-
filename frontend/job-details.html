@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Job Details - Job Portal</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<nav>
+    <div class="brand">JobPortal</div>
+    <div><a href="index.html">Home</a><a href="login.html" id="loginLink">Login</a></div>
+</nav>
+
+<div class="container">
+    <div class="card" id="jobDetails">Loading...</div>
+
+    <div class="card" id="applySection" style="display:none;">
+        <h3>Apply for this position</h3>
+        <form id="applyForm">
+            <label>Resume (PDF/DOC, max 5MB)</label>
+            <input type="file" id="resume" accept=".pdf,.doc,.docx" required>
+            <textarea id="cover_note" placeholder="Short cover note (optional)"></textarea>
+            <button type="submit">Submit Application</button>
+            <p id="applyMessage"></p>
+        </form>
+    </div>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+    const params = new URLSearchParams(window.location.search);
+    const jobId = params.get('id');
+    const user = getUser();
+
+    async function loadJob() {
+        const detailsEl = document.getElementById('jobDetails');
+        try {
+            const job = await apiRequest(`/jobs/${jobId}`);
+            detailsEl.innerHTML = `
+                <h1>${job.title}</h1>
+                <span class="tag">${job.type}</span>
+                <span class="tag">${job.location || 'Remote'}</span>
+                <p style="margin-top:10px;"><strong>${job.company_name}</strong></p>
+                <p style="margin-top:10px;">${job.description}</p>
+                <p style="margin-top:10px;"><strong>Compensation:</strong> ${job.stipend_salary || 'Not specified'}</p>
+                <p><strong>Skills:</strong> ${job.skills_required || 'Not specified'}</p>
+            `;
+
+            if (user && user.role === 'candidate') {
+                document.getElementById('applySection').style.display = 'block';
+            } else if (!user) {
+                document.getElementById('loginLink').textContent = 'Login to Apply';
+            }
+        } catch (err) {
+            detailsEl.innerHTML = `<p class="error">${err.message}</p>`;
+        }
+    }
+
+    document.getElementById('applyForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const messageEl = document.getElementById('applyMessage');
+        messageEl.textContent = '';
+
+        const formData = new FormData();
+        formData.append('job_id', jobId);
+        formData.append('cover_note', document.getElementById('cover_note').value);
+        formData.append('resume', document.getElementById('resume').files[0]);
+
+        try {
+            await apiUpload('/applications/apply', formData);
+            messageEl.textContent = 'Application submitted successfully!';
+            messageEl.className = 'success';
+        } catch (err) {
+            messageEl.textContent = err.message;
+            messageEl.className = 'error';
+        }
+    });
+
+    loadJob();
+</script>
+</body>
+</html>
