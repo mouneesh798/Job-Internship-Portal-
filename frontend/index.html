@@ -2,10 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Job/Internship Portal</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JobPortal - Find Jobs & Internships</title>
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+
 <nav>
     <div class="brand">JobPortal</div>
     <div id="navLinks">
@@ -15,23 +17,40 @@
 </nav>
 
 <div class="container">
-    <div class="card">
-        <h1>Find Your Next Job or Internship</h1>
-        <form id="searchForm" style="flex-direction: row; flex-wrap: wrap; max-width: none;">
-            <input type="text" id="search" placeholder="Search title or skills" style="flex:2; min-width:200px;">
-            <select id="type" style="flex:1; min-width:120px;">
-                <option value="">All Types</option>
-                <option value="job">Job</option>
-                <option value="internship">Internship</option>
-            </select>
-            <input type="text" id="location" placeholder="Location" style="flex:1; min-width:150px;">
-            <button type="submit" style="flex:0;">Search</button>
-        </form>
+    <div class="hero">
+        <div class="hero-content">
+            <h1>Find Your <span>Dream Career</span> Today</h1>
+            <p>Discover thousands of jobs and internships tailored to your skills. Your next opportunity is just a click away.</p>
+            <div style="display:flex; gap:12px; flex-wrap:wrap;">
+                <a href="register.html" class="btn btn-primary">Get Started</a>
+                <a href="#listings" class="btn btn-secondary">Browse Openings</a>
+            </div>
+        </div>
+        <div class="hero-image">
+            <img src="images/hero.jpg" alt="Team collaboration">
+        </div>
     </div>
 
-    <div class="card">
-        <h2>Open Listings</h2>
-        <div id="jobList">Loading...</div>
+    <div class="card" id="listings">
+        <div class="card-header">
+            <h2>Open Listings</h2>
+            <span class="badge badge-primary" id="countBadge">Loading...</span>
+        </div>
+
+        <form id="searchForm" class="search-form">
+            <input type="text" id="search" placeholder="Search title or skills...">
+            <select id="type">
+                <option value="">All Types</option>
+                <option value="job">Jobs</option>
+                <option value="internship">Internships</option>
+            </select>
+            <input type="text" id="location" placeholder="Location...">
+            <button type="submit" class="btn btn-primary btn-sm">Search</button>
+        </form>
+
+        <div id="jobList" style="margin-top:16px;">
+            <div style="text-align:center; padding:40px; color:var(--gray-400);">Loading jobs...</div>
+        </div>
     </div>
 </div>
 
@@ -46,26 +65,33 @@
 
     async function loadJobs(params = '') {
         const listEl = document.getElementById('jobList');
-        listEl.textContent = 'Loading...';
+        const countEl = document.getElementById('countBadge');
+        listEl.innerHTML = '<div style="text-align:center; padding:40px; color:var(--gray-400);">Loading...</div>';
         try {
             const jobs = await apiRequest(`/jobs${params}`);
+            countEl.textContent = `${jobs.length} listing${jobs.length !== 1 ? 's' : ''}`;
             if (jobs.length === 0) {
-                listEl.innerHTML = '<p>No jobs found.</p>';
+                listEl.innerHTML = '<div style="text-align:center; padding:60px 20px; color:var(--gray-400);"><p style="font-size:3rem; margin-bottom:12px;">🔍</p><p>No jobs found. Try adjusting your search.</p></div>';
                 return;
             }
             listEl.innerHTML = jobs.map(job => `
                 <div class="job-item">
-                    <h3>${job.title}</h3>
-                    <span class="tag">${job.type}</span>
-                    <span class="tag">${job.location || 'Remote'}</span>
-                    <p>${job.company_name || job.employer_name}</p>
-                    <p>${job.description.slice(0, 140)}...</p>
-                    <p><strong>${job.stipend_salary || ''}</strong></p>
-                    <a href="job-details.html?id=${job.id}">View & Apply →</a>
+                    <h3><a href="job-details.html?id=${job.id}">${job.title}</a></h3>
+                    <div class="job-company">${job.company_name || job.employer_name}</div>
+                    <div class="job-meta">
+                        <span class="tag ${job.type === 'internship' ? 'tag-internship' : 'tag-job'}">${job.type}</span>
+                        <span class="tag tag-location">${job.location || 'Remote'}</span>
+                        ${job.stipend_salary ? `<span class="tag tag-job">${job.stipend_salary}</span>` : ''}
+                    </div>
+                    <div class="job-desc">${job.description.slice(0, 150)}${job.description.length > 150 ? '...' : ''}</div>
+                    <div class="job-footer">
+                        <div class="tags">${(job.skills_required || '').split(',').filter(s => s.trim()).map(s => `<span class="tag">${s.trim()}</span>`).join('')}</div>
+                        <a href="job-details.html?id=${job.id}" class="btn btn-primary btn-sm">View & Apply →</a>
+                    </div>
                 </div>
             `).join('');
         } catch (err) {
-            listEl.innerHTML = `<p class="error">${err.message}</p>`;
+            listEl.innerHTML = `<div class="message message-error">${err.message}</div>`;
         }
     }
 
@@ -75,7 +101,7 @@
         const type = document.getElementById('type').value;
         const location = document.getElementById('location').value;
         const qs = new URLSearchParams({ search, type, location }).toString();
-        loadJobs(`?${qs}`);
+        loadJobs(qs ? `?${qs}` : '');
     });
 
     loadJobs();

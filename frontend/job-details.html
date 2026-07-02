@@ -2,26 +2,39 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Job Details - Job Portal</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Job Details - JobPortal</title>
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+
 <nav>
     <div class="brand">JobPortal</div>
     <div><a href="index.html">Home</a><a href="login.html" id="loginLink">Login</a></div>
 </nav>
 
 <div class="container">
-    <div class="card" id="jobDetails">Loading...</div>
+    <div class="card" id="jobDetails" style="padding:36px;">
+        <div style="text-align:center; padding:60px; color:var(--gray-400);">Loading job details...</div>
+    </div>
 
-    <div class="card" id="applySection" style="display:none;">
-        <h3>Apply for this position</h3>
+    <div class="card" id="applySection" style="display:none; border: 2px solid var(--primary-light);">
+        <h3 style="display:flex; align-items:center; gap:8px; margin-bottom:20px;">
+            <span style="font-size:1.4rem;">📄</span> Apply for this position
+        </h3>
         <form id="applyForm">
-            <label>Resume (PDF/DOC, max 5MB)</label>
-            <input type="file" id="resume" accept=".pdf,.doc,.docx" required>
-            <textarea id="cover_note" placeholder="Short cover note (optional)"></textarea>
-            <button type="submit">Submit Application</button>
-            <p id="applyMessage"></p>
+            <div>
+                <label for="resume">Resume <span style="font-weight:400; color:var(--gray-400);">(PDF/DOC, max 5MB)</span></label>
+                <input type="file" id="resume" accept=".pdf,.doc,.docx" required style="padding:10px;">
+            </div>
+            <div>
+                <label for="cover_note">Cover Note <span style="font-weight:400; color:var(--gray-400);">(optional)</span></label>
+                <textarea id="cover_note" placeholder="Tell the employer why you're a great fit..."></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary" style="align-self:flex-start;">
+                Submit Application →
+            </button>
+            <div id="applyMessage" style="min-height:24px;"></div>
         </form>
     </div>
 </div>
@@ -32,47 +45,87 @@
     const jobId = params.get('id');
     const user = getUser();
 
+    if (!jobId) {
+        document.getElementById('jobDetails').innerHTML = '<div class="message message-error">No job ID specified.</div>';
+    }
+
     async function loadJob() {
         const detailsEl = document.getElementById('jobDetails');
         try {
             const job = await apiRequest(`/jobs/${jobId}`);
             detailsEl.innerHTML = `
-                <h1>${job.title}</h1>
-                <span class="tag">${job.type}</span>
-                <span class="tag">${job.location || 'Remote'}</span>
-                <p style="margin-top:10px;"><strong>${job.company_name}</strong></p>
-                <p style="margin-top:10px;">${job.description}</p>
-                <p style="margin-top:10px;"><strong>Compensation:</strong> ${job.stipend_salary || 'Not specified'}</p>
-                <p><strong>Skills:</strong> ${job.skills_required || 'Not specified'}</p>
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:16px; margin-bottom:20px;">
+                    <div>
+                        <h1 style="font-size:1.8rem; margin-bottom:8px;">${job.title}</h1>
+                        <div style="font-size:1.1rem; color:var(--gray-500); font-weight:500;">${job.company_name}</div>
+                    </div>
+                    <div class="tags">
+                        <span class="tag ${job.type === 'internship' ? 'tag-internship' : 'tag-job'}">${job.type}</span>
+                        <span class="tag tag-location">${job.location || 'Remote'}</span>
+                    </div>
+                </div>
+
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px,1fr)); gap:16px; padding:20px; background:var(--gray-50); border-radius:10px; margin-bottom:24px;">
+                    <div>
+                        <div style="font-size:0.75rem; text-transform:uppercase; color:var(--gray-400); font-weight:600; letter-spacing:0.5px;">Type</div>
+                        <div style="font-weight:600; margin-top:4px; text-transform:capitalize;">${job.type}</div>
+                    </div>
+                    <div>
+                        <div style="font-size:0.75rem; text-transform:uppercase; color:var(--gray-400); font-weight:600; letter-spacing:0.5px;">Location</div>
+                        <div style="font-weight:600; margin-top:4px;">${job.location || 'Remote'}</div>
+                    </div>
+                    <div>
+                        <div style="font-size:0.75rem; text-transform:uppercase; color:var(--gray-400); font-weight:600; letter-spacing:0.5px;">Compensation</div>
+                        <div style="font-weight:600; margin-top:4px; color:var(--success);">${job.stipend_salary || 'Not specified'}</div>
+                    </div>
+                    <div>
+                        <div style="font-size:0.75rem; text-transform:uppercase; color:var(--gray-400); font-weight:600; letter-spacing:0.5px;">Posted</div>
+                        <div style="font-weight:600; margin-top:4px;">${new Date(job.created_at).toLocaleDateString()}</div>
+                    </div>
+                </div>
+
+                <h3 style="margin-bottom:10px;">Description</h3>
+                <p style="color:var(--gray-600); line-height:1.8; white-space:pre-wrap;">${job.description}</p>
+
+                ${job.skills_required ? `
+                <h3 style="margin-top:24px; margin-bottom:10px;">Required Skills</h3>
+                <div class="tags">
+                    ${job.skills_required.split(',').filter(s => s.trim()).map(s => `<span class="tag">${s.trim()}</span>`).join('')}
+                </div>` : ''}
             `;
 
             if (user && user.role === 'candidate') {
                 document.getElementById('applySection').style.display = 'block';
             } else if (!user) {
-                document.getElementById('loginLink').textContent = 'Login to Apply';
+                document.getElementById('loginLink').textContent = 'Login to Apply →';
             }
         } catch (err) {
-            detailsEl.innerHTML = `<p class="error">${err.message}</p>`;
+            detailsEl.innerHTML = `<div class="message message-error">${err.message}</div>`;
         }
     }
 
     document.getElementById('applyForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const messageEl = document.getElementById('applyMessage');
-        messageEl.textContent = '';
+        messageEl.innerHTML = '';
+
+        const fileInput = document.getElementById('resume');
+        if (!fileInput.files[0]) {
+            messageEl.innerHTML = '<div class="message message-error">Please select a resume file.</div>';
+            return;
+        }
 
         const formData = new FormData();
         formData.append('job_id', jobId);
         formData.append('cover_note', document.getElementById('cover_note').value);
-        formData.append('resume', document.getElementById('resume').files[0]);
+        formData.append('resume', fileInput.files[0]);
 
         try {
             await apiUpload('/applications/apply', formData);
-            messageEl.textContent = 'Application submitted successfully!';
-            messageEl.className = 'success';
+            messageEl.innerHTML = '<div class="message message-success">Application submitted successfully!</div>';
+            document.getElementById('applyForm').reset();
         } catch (err) {
-            messageEl.textContent = err.message;
-            messageEl.className = 'error';
+            messageEl.innerHTML = `<div class="message message-error">${err.message}</div>`;
         }
     });
 

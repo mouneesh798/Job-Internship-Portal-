@@ -2,51 +2,74 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Register - Job Portal</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Register - JobPortal</title>
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+
 <nav>
     <div class="brand">JobPortal</div>
     <div><a href="index.html">Home</a><a href="login.html">Login</a></div>
 </nav>
 
 <div class="container">
-    <div class="card">
-        <h2>Create an Account</h2>
+    <div class="card auth-card">
+        <h2>Create Account</h2>
+        <p class="subtitle">Join thousands of job seekers and employers</p>
         <form id="registerForm">
-            <label>I am a:</label>
-            <select id="role" required>
-                <option value="candidate">Candidate</option>
-                <option value="employer">Employer</option>
-            </select>
-
-            <input type="text" id="name" placeholder="Full Name" required>
-            <input type="email" id="email" placeholder="Email" required>
-            <input type="password" id="password" placeholder="Password" required minlength="6">
-            <input type="text" id="phone" placeholder="Phone (optional)">
-            <input type="text" id="company_name" placeholder="Company Name" style="display:none;">
-
-            <button type="submit">Register</button>
-            <p id="message"></p>
+            <div>
+                <label for="role">I am a</label>
+                <select id="role" required style="width:100%;">
+                    <option value="candidate">Job Seeker</option>
+                    <option value="employer">Employer / Company</option>
+                </select>
+            </div>
+            <div>
+                <label for="name">Full Name</label>
+                <input type="text" id="name" placeholder="John Doe" required style="width:100%;">
+            </div>
+            <div>
+                <label for="email">Email</label>
+                <input type="email" id="email" placeholder="you@example.com" required style="width:100%;">
+            </div>
+            <div>
+                <label for="password">Password</label>
+                <input type="password" id="password" placeholder="Min 6 characters" required minlength="6" style="width:100%;">
+            </div>
+            <div>
+                <label for="phone">Phone <span style="font-weight:400; color:var(--gray-400);">(optional)</span></label>
+                <input type="text" id="phone" placeholder="+1 234 567 890" style="width:100%;">
+            </div>
+            <div id="companyField" style="display:none;">
+                <label for="company_name">Company Name</label>
+                <input type="text" id="company_name" placeholder="Acme Corp" style="width:100%;">
+            </div>
+            <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center; padding:14px; margin-top:4px;">Create Account</button>
+            <div id="message" style="min-height:24px;"></div>
         </form>
-        <p style="margin-top:10px;">Already have an account? <a href="login.html">Login here</a></p>
+        <p style="margin-top:16px; text-align:center; color:var(--gray-500); font-size:0.9rem;">
+            Already registered? <a href="login.html" style="color:var(--primary); font-weight:600;">Sign in</a>
+        </p>
     </div>
 </div>
 
 <script src="js/api.js"></script>
 <script>
     const roleSelect = document.getElementById('role');
-    const companyField = document.getElementById('company_name');
+    const companyField = document.getElementById('companyField');
+    const companyInput = document.getElementById('company_name');
+
     roleSelect.addEventListener('change', () => {
-        companyField.style.display = roleSelect.value === 'employer' ? 'block' : 'none';
-        companyField.required = roleSelect.value === 'employer';
+        const isEmployer = roleSelect.value === 'employer';
+        companyField.style.display = isEmployer ? 'block' : 'none';
+        companyInput.required = isEmployer;
     });
 
     document.getElementById('registerForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const messageEl = document.getElementById('message');
-        messageEl.textContent = '';
+        messageEl.innerHTML = '';
 
         const payload = {
             role: roleSelect.value,
@@ -54,17 +77,15 @@
             email: document.getElementById('email').value,
             password: document.getElementById('password').value,
             phone: document.getElementById('phone').value,
-            company_name: companyField.value
+            company_name: companyInput.value
         };
 
         try {
             await apiRequest('/auth/register', 'POST', payload);
-            messageEl.textContent = 'Registration successful! Redirecting to login...';
-            messageEl.className = 'success';
+            messageEl.innerHTML = '<div class="message message-success">Account created! Redirecting to login...</div>';
             setTimeout(() => window.location.href = 'login.html', 1200);
         } catch (err) {
-            messageEl.textContent = err.message;
-            messageEl.className = 'error';
+            messageEl.innerHTML = `<div class="message message-error">${err.message}</div>`;
         }
     });
 </script>

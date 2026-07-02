@@ -2,10 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Candidate Dashboard - Job Portal</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Dashboard - JobPortal</title>
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+
 <nav>
     <div class="brand">JobPortal</div>
     <div>
@@ -15,48 +17,90 @@
 </nav>
 
 <div class="container">
-    <div class="card">
-        <h1 id="welcomeMsg">My Applications</h1>
+    <div class="dashboard-header">
+        <div>
+            <h1 id="welcomeMsg">My Applications</h1>
+            <p style="color:var(--gray-500); font-size:0.9rem;">Track all your job applications in one place</p>
+        </div>
+        <a href="index.html" class="btn btn-primary btn-sm">Browse Jobs →</a>
+    </div>
+
+    <div class="stats-grid" id="statsGrid">
+        <div class="stat-card">
+            <h4>Total Applied</h4>
+            <div class="number" id="totalApplied">-</div>
+        </div>
+        <div class="stat-card">
+            <h4>Shortlisted</h4>
+            <div class="number" id="totalShortlisted" style="color:var(--warning);">-</div>
+        </div>
+        <div class="stat-card">
+            <h4>Selected</h4>
+            <div class="number" id="totalSelected" style="color:var(--success);">-</div>
+        </div>
+        <div class="stat-card">
+            <h4>Rejected</h4>
+            <div class="number" id="totalRejected" style="color:var(--danger);">-</div>
+        </div>
     </div>
 
     <div class="card">
-        <table>
-            <thead>
-                <tr>
-                    <th>Job Title</th><th>Company</th><th>Type</th>
-                    <th>Applied On</th><th>Status</th><th>Resume</th>
-                </tr>
-            </thead>
-            <tbody id="appTableBody"><tr><td colspan="6">Loading...</td></tr></tbody>
-        </table>
+        <div class="card-header">
+            <h2>Application History</h2>
+        </div>
+        <div style="overflow-x:auto;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Job Title</th>
+                        <th>Company</th>
+                        <th>Type</th>
+                        <th>Applied On</th>
+                        <th>Status</th>
+                        <th>Resume</th>
+                    </tr>
+                </thead>
+                <tbody id="appTableBody">
+                    <tr><td colspan="6" style="text-align:center; color:var(--gray-400); padding:40px;">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 
 <script src="js/api.js"></script>
 <script>
     const user = requireAuth('candidate');
-    if (user) document.getElementById('welcomeMsg').textContent = `Welcome, ${user.name}`;
+    if (user) {
+        document.getElementById('welcomeMsg').textContent = `Welcome, ${user.name.split(' ')[0]}!`;
+    }
 
     async function loadApplications() {
         const tbody = document.getElementById('appTableBody');
         try {
             const apps = await apiRequest('/applications/my', 'GET', null, true);
+
+            document.getElementById('totalApplied').textContent = apps.length;
+            document.getElementById('totalShortlisted').textContent = apps.filter(a => a.status === 'Shortlisted').length;
+            document.getElementById('totalSelected').textContent = apps.filter(a => a.status === 'Selected').length;
+            document.getElementById('totalRejected').textContent = apps.filter(a => a.status === 'Rejected').length;
+
             if (apps.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6">You have not applied to any jobs yet.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:40px; color:var(--gray-400);">You haven\'t applied to any jobs yet. <a href="index.html" style="color:var(--primary);">Browse openings →</a></td></tr>';
                 return;
             }
             tbody.innerHTML = apps.map(a => `
                 <tr>
-                    <td>${a.title}</td>
+                    <td><strong>${a.title}</strong></td>
                     <td>${a.company_name}</td>
-                    <td>${a.type}</td>
+                    <td><span class="tag ${a.type === 'internship' ? 'tag-internship' : 'tag-job'}">${a.type}</span></td>
                     <td>${new Date(a.applied_at).toLocaleDateString()}</td>
-                    <td class="status-${a.status}">${a.status}</td>
-                    <td><a href="http://localhost:5000${a.resume_path}" target="_blank">View</a></td>
+                    <td><span class="status-${a.status}">${a.status}</span></td>
+                    <td><a href="http://localhost:5000${a.resume_path}" target="_blank" class="btn btn-secondary btn-sm" style="color:var(--primary);">View</a></td>
                 </tr>
             `).join('');
         } catch (err) {
-            tbody.innerHTML = `<tr><td colspan="6" class="error">${err.message}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="6" class="message message-error" style="text-align:center;">${err.message}</td></tr>`;
         }
     }
 
