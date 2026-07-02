@@ -2,3 +2,4 @@ node_modules/
 .env
 backend/uploads/resumes/*
 !backend/uploads/resumes/.gitkeep
+backend/*.log
